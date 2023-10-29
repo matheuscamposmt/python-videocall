@@ -23,7 +23,7 @@ def handle_client(client_socket, client_address):
 
     # check if the client is already registered
     for client in clients:
-        if client['name'] == name:
+        if client['name'] == name and client['ip'] == ip:
             response = 'User already registered'
             client_socket.send(response.encode())
             return
