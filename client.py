@@ -14,14 +14,15 @@ client_socket.connect(server_address)
 ip, port = client_socket.getsockname()
 
 # Envia uma mensagem de registro para o servidor
-name = input('Enter your name: ')
-message = ','.join([name, ip, str(port)])
+name = input('Qual o seu nome? ')
+client_call_port = int(input('Qual porta que você deseja usar para receber chamadas? '))
+message = ','.join([name, ip, str(port), str(client_call_port)])
 client_socket.send(message.encode())
 
 # Recebe uma resposta do servidor
-response = client_socket.recv(1024).decode()
-print(response)
-if response == 'User already registered':
+response = client_socket.recv(1024).decode().split(',')
+print(response[1])
+if response[0] == 'error':
     client_socket.close()
     exit()
 
@@ -52,10 +53,6 @@ def callback(event):
 
 user_list.bind('<Double-1>', callback)
 
-# Cria o botão de fechar a janela de detalhes do usuário (É necessário?)
-#close_button = tk.Button(root, text='Fechar', command=lambda: detail_window.destroy())
-
-# Exibe a lista de usuários
 # Exibe a lista de usuários
 def show_user_list():
     global user_list
@@ -73,6 +70,7 @@ def show_user_list():
 
     # Atualiza a interface gráfica
     root.update()
+
 # Exibe os detalhes de um usuário
 def show_user_details(user):
     global detail_window
@@ -90,7 +88,6 @@ def show_user_details(user):
     detail_window.title(f"Detalhes de {user}")
     detail_label = tk.Label(detail_window, text=f"IP: {ip}\nPorta: {port}")
     detail_label.pack(side=tk.TOP)
-    #close_button.pack(side=tk.BOTTOM)
 
 # Envia mensagens para o servidor
 def send_message(message):
