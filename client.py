@@ -21,6 +21,9 @@ client_socket.send(message.encode())
 # Recebe uma resposta do servidor
 response = client_socket.recv(1024).decode()
 print(response)
+if response == 'User already registered':
+    client_socket.close()
+    exit()
 
 # Cria a interface gráfica
 root = tk.Tk()
