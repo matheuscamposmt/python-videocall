@@ -41,8 +41,19 @@ quit_button.pack(side=tk.LEFT)
 user_list = tk.Listbox(root)
 user_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-# Cria o botão de fechar a janela de detalhes do usuário
-close_button = tk.Button(root, text='Fechar', command=lambda: detail_window.destroy())
+def callback(event):
+    selection = event.widget.curselection()
+    if selection:
+        index = selection[0]
+        data = event.widget.get(index)
+        show_user_details(data)
+    else:
+        print(0)
+
+user_list.bind('<Double-1>', callback)
+
+# Cria o botão de fechar a janela de detalhes do usuário (É necessário?)
+#close_button = tk.Button(root, text='Fechar', command=lambda: detail_window.destroy())
 
 # Exibe a lista de usuários
 # Exibe a lista de usuários
@@ -79,7 +90,7 @@ def show_user_details(user):
     detail_window.title(f"Detalhes de {user}")
     detail_label = tk.Label(detail_window, text=f"IP: {ip}\nPorta: {port}")
     detail_label.pack(side=tk.TOP)
-    close_button.pack(side=tk.BOTTOM)
+    #close_button.pack(side=tk.BOTTOM)
 
 # Envia mensagens para o servidor
 def send_message(message):
