@@ -23,7 +23,7 @@ def handle_client(client_socket, client_address):
 
     # check if the client is already registered
     for client in clients:
-        if client['name'] == name:
+        if client['name'] == name and client['ip'] == ip:
             response = 'User already registered'
             client_socket.send(response.encode())
             return
@@ -45,6 +45,12 @@ def handle_client(client_socket, client_address):
             message = client_socket.recv(1024).decode()
             if message == 'list':
                 response = get_client_list()
+            elif message.startswith('details'):
+                user = message.split(',')[1]
+                # search for the client in the list
+                for client in clients:
+                    if client['name'] == user:
+                        response = f"{client['ip']},{client['port']}"
             elif message == 'quit':
                 client_socket.close()
                 clients.remove(client)
