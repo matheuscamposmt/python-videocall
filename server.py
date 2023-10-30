@@ -1,93 +1,90 @@
 import socket
 import threading
 
-# cria um socket TCP/IP
-server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+class ChatServer:
+    def __init__(self, server_address=('localhost', 3001)):
+        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.bind(server_address)
+        self.server_socket.listen(5)
+        self.clients = []
 
-# define o endereço e porta do servidor
-server_address = ('localhost', 3000)
-server_socket.bind(server_address)
+    def handle_client(self, client_socket, client_address):
+        message = client_socket.recv(1024).decode()
+        name, ip, port, call_port = message.split(',')
+        server_socket_ip, server_socket_port = self.server_socket.getsockname()
 
-# inicia o servidor
-server_socket.listen(5)
-
-# lista de clientes conectados
-clients = []
-
-def handle_client(client_socket, client_address):
-    global clients
-
-    # recebe uma mensagem de registro do cliente
-    message = client_socket.recv(1024).decode()
-    name, ip, port, call_port = message.split(',')
-
-    # checa se o cliente já está registrado
-    for client in clients:
-        if client['name'] == name and client['ip'] == ip:
-            response = 'error,Usuário já registrado'
-            print(response.split(',')[1])
-            client_socket.send(response.encode())
+        for client in self.clients:
+            if client['name'] == name and client['ip'] == ip:
+                self.send_error(client_socket, 'Usuário já registrado')
+                return
+            elif client['ip'] == ip and client['call_port'] == call_port:
+                self.send_error(client_socket, f'Falha ao registrar cliente: {name} - Já existe um usuário com esse IP recebendo chamadas nessa porta')
+                return
+        print(f"Registrando novo cliente: {name} ({ip}:{port} recebendo em {call_port}) no servidor {server_socket_ip}:{server_socket_port}")
+        if ip == server_socket_ip and call_port == str(server_socket_port):
+            self.send_error(client_socket, f'Falha ao registrar cliente: {name} - Não é possível registrar essa porta porque é a porta do servidor')
             return
-        elif client['ip'] == ip and client['call_port'] == call_port:
-            response = f"error,Falha ao registrar cliente: {name} - Já existe um usuário com esse IP recebendo chamadas nessa porta"
-            print(response.split(',')[1])
-            client_socket.send(response.encode())
+        
+        if call_port == port:
+            self.send_error(client_socket, f'Falha ao registrar cliente: {name} - A porta de chamada deve ser diferente da porta de conexão ao servidor')
             return
 
-    # verifica se a porta de chamada é diferente da porta de conexão ao servidor
-    if call_port == port:
-        response = f"error,Falha ao registrar cliente: {name} - A porta de chamada deve ser diferente da porta de conexão ao servidor"
-        print(response.split(',')[1])
-        client_socket.send(response.encode())
-        return
-    
-    client = {'name': name, 'ip': ip, 'port': port, 'call_port': call_port, 'socket': client_socket}
-    clients.append(client)
+        client = {'name': name, 'ip': ip, 'port': port, 'call_port': call_port, 'socket': client_socket}
+        self.clients.append(client)
+        print(f"Novo cliente registrado: {name} ({ip}:{port})")
+        self.send_message(client_socket, 'success,Registrado com sucesso')
 
-    # imprime uma mensagem de registro
-    print(f"Novo cliente registrado: {name} ({ip}:{port})")
-
-    # envia uma mensagem de registro bem sucedido para o cliente
-    response = 'success,Registrado com sucesso'
-    client_socket.send(response.encode())
-
-    # trata as mensagens recebidas do cliente
-    while True:
-        try:
-            message = client_socket.recv(1024).decode()
-            if message == 'list':
-                response = get_client_list()
-            elif message.startswith('details'):
-                user = message.split(',')[1]
-                for client in clients:
-                    if client['name'] == user:
-                        response = f"{client['ip']},{client['call_port']}"
-            elif message == 'quit':
-                client_socket.close()
-                clients.remove(client)
-                print(f"Cliente desconectado: {name} ({ip}:{port})")
+        while True:
+            try:
+                message = client_socket.recv(1024).decode()
+                if message == 'list':
+                    response = self.get_client_list()
+                elif message.startswith('details'):
+                    user = message.split(',')[1]
+                    response = self.get_client_details(user)
+                elif message == 'quit':
+                    self.disconnect_client(client_socket, client)
+                    break
+                else:
+                    response = f"{name}: {message}"
+                self.send_message(client_socket, response)
+            except:
+                self.disconnect_client(client_socket, client)
                 break
-            else:
-                response = f"{name}: {message}"
-            client_socket.send(response.encode())
-        except:
-            client_socket.close()
-            if client in clients:
-                clients.remove(client)
-            print(f"Cliente desconectado: {name} ({ip}:{port})")
-            break
 
-# retorna a lista de clientes conectados
-def get_client_list():
-    global clients
+    def send_error(self, client_socket, error_message):
+        response = f'error,{error_message}'
+        print(response.split(',')[1])
+        self.send_message(client_socket, response)
 
-    client_list = [client['name'] for client in clients]
-    response = ','.join(client_list)
-    return response
+    def send_message(self, client_socket, message):
+        client_socket.send(message.encode())
 
-# aguarda por novas conexões
-while True:
-    client_socket, client_address = server_socket.accept()
-    print(f"Nova conexão de {client_address[0]}:{client_address[1]}")
-    client_thread = threading.Thread(target=handle_client, args=(client_socket, client_address))
-    client_thread.start()
+    def get_client_list(self):
+        client_list = [client['name'] for client in self.clients]
+        return ','.join(client_list)
+
+    def get_client_details(self, user):
+        for client in self.clients:
+            if client['name'] == user:
+                return f"{client['ip']},{client['call_port']}"
+
+    def disconnect_client(self, client_socket, client):
+        client_socket.send('Conexão encerrada'.encode())
+        client_socket.close()
+        if client in self.clients:
+            self.clients.remove(client)
+        print(f"Cliente desconectado: {client['name']} ({client['ip']}:{client['port']})")
+
+
+    def run(self):
+        print(f"Servidor iniciado em {self.server_socket.getsockname()[0]}:{self.server_socket.getsockname()[1]}")
+        while True:
+            client_socket, client_address = self.server_socket.accept()
+            print(f"Nova conexão de {client_address[0]}:{client_address[1]}")
+            client_thread = threading.Thread(target=self.handle_client, args=(client_socket, client_address))
+            client_thread.start()
+
+if __name__ == "__main__":
+    server = ChatServer()
+    server.run()
