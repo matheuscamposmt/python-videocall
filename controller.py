@@ -1,5 +1,6 @@
 from gui import View, SignUpView, UserListView
 from client import Client
+from tkinter import ACTIVE
 
 class Controller:
     def __init__(self, client: Client, gui: View):
@@ -47,6 +48,7 @@ class UserListController:
     def _bind(self):
         self.frame.user_list.bind('<Double-1>', self.user_selection_callback)
         self.frame.list_button.configure(command=self.show_user_list)
+        self.frame.quit_button.configure(command=self.quit)
 
     def register(self, name, client_call_port):
         self.client.register(name, client_call_port)
@@ -59,6 +61,10 @@ class UserListController:
         data = self.client.get_user_details(user)
         self.frame.window_user_details(data)
 
+    def call_user(self):
+        user = self.frame.user_list.get(ACTIVE)
+        self.client.call_user(user)
+
     def show_user_list(self):
         user_list = self.client.get_user_list()
         if user_list:
@@ -70,3 +76,7 @@ class UserListController:
             index = selection[0]
             data = event.widget.get(index)
             self.show_user_details(data)
+    
+    def quit(self):
+        self.client.quit()
+        self.view.root.quit()

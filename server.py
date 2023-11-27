@@ -70,6 +70,7 @@ class ChatServer:
                 elif message == 'quit':
                     self.disconnect_client(client_socket, client)
                     break
+    
                 # Caso contrário, a resposta é a mensagem do cliente
                 else:
                     response = f"{name}: {message}"
