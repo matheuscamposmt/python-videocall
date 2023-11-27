@@ -61,7 +61,7 @@ class ChatServer:
                 message = client_socket.recv(1024).decode()
                 # Se a mensagem for 'list', obtém a lista de clientes
                 if message == 'list':
-                    response = self.get_client_list()
+                    response = self.get_client_list(client_socket)
                 # Se a mensagem começar com 'details', obtém os detalhes do usuário especificado
                 elif message.startswith('details'):
                     user = message.split(',')[1]
@@ -94,11 +94,11 @@ class ChatServer:
         client_socket.send(message.encode())
 
     # Define um método para obter a lista de clientes
-    def get_client_list(self):
+    def get_client_list(self, client_socket):
         # Cria uma lista com os nomes dos clientes
-        client_list = [client['name'] for client in self.clients]
+        client_list = [client['name'] for client in self.clients if client['socket'] != client_socket]
         # Retorna a lista de clientes como uma string
-        return ','.join(client_list)
+        return ','.join(client_list) if client_list else 'not_found'
     
     # Define um método para obter os detalhes do cliente
     def get_client_details(self, user):

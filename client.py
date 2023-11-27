@@ -59,6 +59,9 @@ class ChatClient:
         self.send_message('list')
         # Recebe a lista de usuários do servidor
         response = self.client_socket.recv(1024).decode()
+        # Se a resposta for 'not_found', não há usuários registrados no servidor sem ser o cliente atual
+        if response == 'not_found':
+            return
         # Limpa a lista de usuários na interface do usuário
         self.user_list.delete(0, tk.END)
         # Adiciona cada usuário à lista de usuários na interface do usuário
