@@ -4,7 +4,7 @@ import threading
 # Define a classe ChatServer
 class ChatServer:
     # Inicializa o servidor com o endereço padrão ('localhost', 3001)
-    def __init__(self, server_address=('localhost', 3001)):
+    def __init__(self, server_address=('25.67.66.166', 3001)):
         # Cria um socket para o servidor
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # Vincula o socket do servidor ao endereço especificado
@@ -48,11 +48,18 @@ class ChatServer:
         # Cria um dicionário para armazenar as informações do cliente
         client = {'name': name, 'ip': ip, 'port': port, 'call_port': call_port, 'socket': client_socket}
         # Adiciona o cliente à lista de clientes
-        self.clients.append(client)
+        
         # Imprime uma mensagem indicando que o cliente foi registrado
         print(f"Novo cliente registrado: {name} ({ip}:{port})")
         # Envia uma mensagem de sucesso para o cliente
         self.send_message(client_socket, 'success,Registrado com sucesso')
+
+        # Conecta ao socket de chamada do cliente
+        call_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        call_socket.connect((ip, int(call_port)))
+        client['call_socket'] = call_socket
+
+        self.clients.append(client)
 
         # Loop para lidar com as mensagens do cliente
         while True:
@@ -66,6 +73,14 @@ class ChatServer:
                 elif message.startswith('details'):
                     user = message.split(',')[1]
                     response = self.get_client_details(user)
+                elif message.startswith('call_request'):
+                    print(f"Usuário {name} solicitou uma chamada com {message.split(',')[1]}") 
+                    call_recipient_ip = message.split(',')[1]
+                    call_recipient_port = message.split(',')[2]
+                    recipient = [client for client in self.clients if client['ip'] == call_recipient_ip and client['call_port'] == call_recipient_port][0]
+                    callee_socket = recipient['call_socket']
+                    self.send_call_request(call_socket, callee_socket, client)
+                    response = ''
                 # Se a mensagem for 'quit', desconecta o cliente
                 elif message == 'quit':
                     self.disconnect_client(client_socket, client)
@@ -79,6 +94,15 @@ class ChatServer:
             except:
                 self.disconnect_client(client_socket, client)
                 break
+
+    def send_call_request(self, caller_socket, callee_socket, client):
+        callee_socket.send(f"{client['name']},{client['ip']},{client['call_port']}".encode())
+        print(f"Enviando solicitação de chamada para {callee_socket.getpeername()[0]}:{callee_socket.getpeername()[1]}")
+        response = callee_socket.recv(1024).decode()
+        if response.startswith('accept'):
+            caller_socket.send(response.encode())
+        else:
+            caller_socket.send(response.encode())
 
     # Define um método para enviar uma mensagem de erro
     def send_error(self, client_socket, error_message):
